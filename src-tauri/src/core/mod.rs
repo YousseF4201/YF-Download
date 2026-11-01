@@ -7,7 +7,7 @@ pub mod progress;
 pub mod segment;
 
 pub use checksum::{compute_sha256, verify_sha256};
-pub use engine::{DownloadConfig, DownloadEngine, DownloadResult};
+pub use engine::{DownloadConfig, DownloadEngine, DownloadResult, MIN_SEGMENT_THRESHOLD};
 pub use error::CoreError;
 pub use metadata::FileMetadata;
 pub use network::NetworkClient;
