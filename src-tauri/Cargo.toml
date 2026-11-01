@@ -5,10 +5,19 @@ description = "YF Download Manager - Core Engine and Desktop App"
 authors = ["Youssef <youssef@example.com>"]
 edition = "2024"
 license = "MIT"
+default-run = "yf-download"
 
 [lib]
 name = "yf_download_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "yf-download"
+path = "src/main.rs"
+
+[[bin]]
+name = "yf-cli"
+path = "src/cli.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
