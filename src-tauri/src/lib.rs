@@ -15,7 +15,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::greet;
 
     #[test]
     fn test_greet() {
