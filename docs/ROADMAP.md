@@ -1,4 +1,4 @@
-<div dir="rtl" align="right">
+﻿<div dir="rtl" align="right">
 
 # خريطة الطريق — ROADMAP.md
 
@@ -12,9 +12,9 @@
 ### ما تحتويه:
 - [x] ملفات التوثيق (README، PRD، ARCHITECTURE، ADRs، ROADMAP، AGENTS).
 - [x] إعداد CI (GitHub Actions) للبناء والاختبار على ويندوز ولينكس.
-- [ ] إنشاء هيكل مشروع Tauri + Svelte + Rust فارغ يبني وينجح.
-- [ ] إعداد أدوات الجودة: `cargo fmt`، `cargo clippy`، ESLint، Prettier.
-- [ ] اختبار "Hello World" يمر على كل الأنظمة.
+- [x] إنشاء هيكل مشروع Tauri + Svelte + Rust فارغ يبني وينجح.
+- [x] إعداد أدوات الجودة: `cargo fmt`، `cargo clippy`، ESLint، Prettier.
+- [x] اختبار "Hello World" يمر على كل الأنظمة.
 
 ### شرط النجاح:
 - ✅ `cargo build` ينجح على ويندوز ولينكس.
