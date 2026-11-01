@@ -105,6 +105,50 @@ impl Database {
         Ok(record)
     }
 
+    /// Retrieves a download record matching both URL and save path.
+    pub fn get_download_by_url_and_path(
+        &self,
+        url: &str,
+        save_path: &str,
+    ) -> Result<Option<DownloadRecord>, DbError> {
+        let conn = self.conn()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, url, file_name, save_path, total_size, downloaded_bytes, status, category, priority, created_at, completed_at, error_msg
+             FROM downloads
+             WHERE url = ?1 AND save_path = ?2
+             ORDER BY id DESC
+             LIMIT 1",
+        )?;
+
+        let record = stmt
+            .query_row(params![url, save_path], |row| {
+                let status_str: String = row.get(6)?;
+                let status = status_str
+                    .parse::<DownloadStatus>()
+                    .unwrap_or(DownloadStatus::Failed);
+                let total_size_raw: Option<i64> = row.get(4)?;
+                let downloaded_raw: i64 = row.get(5)?;
+
+                Ok(DownloadRecord {
+                    id: row.get(0)?,
+                    url: row.get(1)?,
+                    file_name: row.get(2)?,
+                    save_path: row.get(3)?,
+                    total_size: total_size_raw.map(|s| s.max(0) as u64),
+                    downloaded_bytes: downloaded_raw.max(0) as u64,
+                    status,
+                    category: row.get(7)?,
+                    priority: row.get(8)?,
+                    created_at: row.get(9)?,
+                    completed_at: row.get(10)?,
+                    error_msg: row.get(11)?,
+                })
+            })
+            .optional()?;
+
+        Ok(record)
+    }
+
     /// Lists all download records in descending order of ID.
     pub fn list_downloads(&self) -> Result<Vec<DownloadRecord>, DbError> {
         let conn = self.conn()?;
@@ -331,6 +375,29 @@ impl Database {
 
         if affected == 0 {
             return Err(DbError::SegmentNotFound(segment_id));
+        }
+
+        Ok(())
+    }
+
+    /// Updates progress and status for an individual segment by download ID and segment index.
+    pub fn update_segment_by_index(
+        &self,
+        download_id: i64,
+        index_num: u32,
+        downloaded: u64,
+        status: SegmentStatus,
+    ) -> Result<(), DbError> {
+        let conn = self.conn()?;
+        let affected = conn.execute(
+            "UPDATE segments
+             SET downloaded = ?1, status = ?2
+             WHERE download_id = ?3 AND index_num = ?4",
+            params![downloaded as i64, status.as_str(), download_id, index_num],
+        )?;
+
+        if affected == 0 {
+            return Err(DbError::SegmentNotFound(index_num as i64));
         }
 
         Ok(())

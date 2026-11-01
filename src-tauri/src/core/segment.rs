@@ -1,4 +1,6 @@
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use reqwest::StatusCode;
@@ -152,20 +154,37 @@ impl Default for SegmentRetryConfig {
 }
 
 /// Downloads a single segment range to its temporary file, emitting progress deltas
-/// over the provided sender channel.
+/// over the provided sender channel. Supports cancellation/pausing and automatic resumption.
 pub async fn download_segment(
     network_client: &NetworkClient,
     url: &str,
     range: &SegmentRange,
     part_path: &Path,
-    progress_tx: Option<Sender<u64>>,
+    progress_tx: Option<Sender<(u32, u64)>>,
     retry_config: SegmentRetryConfig,
+    cancel_flag: Option<Arc<AtomicBool>>,
 ) -> Result<u64, CoreError> {
     let mut attempts = 0;
     let mut backoff = retry_config.initial_backoff;
 
     loop {
-        match download_segment_attempt(network_client, url, range, part_path, &progress_tx).await {
+        if cancel_flag
+            .as_ref()
+            .is_some_and(|c| c.load(Ordering::Relaxed))
+        {
+            return Err(CoreError::Paused);
+        }
+
+        match download_segment_attempt(
+            network_client,
+            url,
+            range,
+            part_path,
+            &progress_tx,
+            &cancel_flag,
+        )
+        .await
+        {
             Ok(bytes) => return Ok(bytes),
             Err(err) => {
                 if is_fatal_segment_error(&err) {
@@ -192,7 +211,8 @@ async fn download_segment_attempt(
     url: &str,
     range: &SegmentRange,
     part_path: &Path,
-    progress_tx: &Option<Sender<u64>>,
+    progress_tx: &Option<Sender<(u32, u64)>>,
+    cancel_flag: &Option<Arc<AtomicBool>>,
 ) -> Result<u64, CoreError> {
     let validated_url = network_client.validate_url(url)?;
 
@@ -206,6 +226,13 @@ async fn download_segment_attempt(
     let expected_len = range.length();
     if existing_bytes >= expected_len {
         return Ok(existing_bytes);
+    }
+
+    if cancel_flag
+        .as_ref()
+        .is_some_and(|c| c.load(Ordering::Relaxed))
+    {
+        return Err(CoreError::Paused);
     }
 
     let range_header_value = range.format_range_header(existing_bytes);
@@ -259,12 +286,20 @@ async fn download_segment_attempt(
     let mut bytes_downloaded_this_attempt: u64 = 0;
 
     while let Some(chunk) = response.chunk().await? {
+        if cancel_flag
+            .as_ref()
+            .is_some_and(|c| c.load(Ordering::Relaxed))
+        {
+            file.flush().await?;
+            return Err(CoreError::Paused);
+        }
+
         file.write_all(&chunk).await?;
         let chunk_len = chunk.len() as u64;
         bytes_downloaded_this_attempt += chunk_len;
 
         if let Some(tx) = progress_tx {
-            let _ = tx.send(chunk_len).await;
+            let _ = tx.send((range.index, chunk_len)).await;
         }
     }
 
@@ -282,6 +317,8 @@ fn is_fatal_segment_error(err: &CoreError) -> bool {
             | CoreError::NotFound
             | CoreError::AccessDenied(_)
             | CoreError::RangeNotSupported
+            | CoreError::Paused
+            | CoreError::Cancelled
     )
 }
 
@@ -292,25 +329,24 @@ mod tests {
 
     #[test]
     fn test_partition_ranges_equal() {
-        let ranges = partition_ranges(1000, 4);
+        let ranges = partition_ranges(100, 4);
         assert_eq!(ranges.len(), 4);
-        assert_eq!(ranges[0], SegmentRange::new(0, 0, 249));
-        assert_eq!(ranges[1], SegmentRange::new(1, 250, 499));
-        assert_eq!(ranges[2], SegmentRange::new(2, 500, 749));
-        assert_eq!(ranges[3], SegmentRange::new(3, 750, 999));
+        assert_eq!(ranges[0], SegmentRange::new(0, 0, 24));
+        assert_eq!(ranges[1], SegmentRange::new(1, 25, 49));
+        assert_eq!(ranges[2], SegmentRange::new(2, 50, 74));
+        assert_eq!(ranges[3], SegmentRange::new(3, 75, 99));
 
         let total: u64 = ranges.iter().map(|r| r.length()).sum();
-        assert_eq!(total, 1000);
+        assert_eq!(total, 100);
     }
 
     #[test]
     fn test_partition_ranges_with_remainder() {
         let ranges = partition_ranges(10, 3);
         assert_eq!(ranges.len(), 3);
-        // 10 / 3 = 3 remainder 1. Segment 0 gets 4, segments 1 & 2 get 3.
-        assert_eq!(ranges[0], SegmentRange::new(0, 0, 3));
-        assert_eq!(ranges[1], SegmentRange::new(1, 4, 6));
-        assert_eq!(ranges[2], SegmentRange::new(2, 7, 9));
+        assert_eq!(ranges[0], SegmentRange::new(0, 0, 3)); // 4 bytes
+        assert_eq!(ranges[1], SegmentRange::new(1, 4, 6)); // 3 bytes
+        assert_eq!(ranges[2], SegmentRange::new(2, 7, 9)); // 3 bytes
 
         let total: u64 = ranges.iter().map(|r| r.length()).sum();
         assert_eq!(total, 10);
@@ -326,7 +362,6 @@ mod tests {
 
     #[test]
     fn test_partition_ranges_small_file() {
-        // File size smaller than requested segment count
         let ranges = partition_ranges(3, 8);
         assert_eq!(ranges.len(), 3);
         assert_eq!(ranges[0], SegmentRange::new(0, 0, 0));
