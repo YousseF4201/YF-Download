@@ -38,6 +38,7 @@ jobs:
           node-version: '20'
 
       - name: Cache Rust dependencies
+        if: hashFiles('src-tauri/Cargo.lock') != ''
         uses: actions/cache@v4
         with:
           path: |
@@ -48,6 +49,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Cache Node modules
+        if: hashFiles('package-lock.json') != ''
         uses: actions/cache@v4
         with:
           path: node_modules
@@ -55,16 +57,20 @@ jobs:
           restore-keys: ${{ runner.os }}-node-
 
       - name: Install frontend dependencies
+        if: hashFiles('package.json') != ''
         run: npm ci
 
       - name: Lint frontend
+        if: hashFiles('package.json') != ''
         run: npm run lint --if-present
 
       - name: Check Rust formatting
+        if: hashFiles('src-tauri/Cargo.toml') != ''
         working-directory: src-tauri
         run: cargo fmt --all -- --check
 
       - name: Run Clippy
+        if: hashFiles('src-tauri/Cargo.toml') != ''
         working-directory: src-tauri
         run: cargo clippy --all-targets --all-features -- -D warnings
 
@@ -100,6 +106,7 @@ jobs:
           node-version: '20'
 
       - name: Cache Rust dependencies
+        if: hashFiles('src-tauri/Cargo.lock') != ''
         uses: actions/cache@v4
         with:
           path: |
@@ -110,6 +117,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Cache Node modules
+        if: hashFiles('package-lock.json') != ''
         uses: actions/cache@v4
         with:
           path: node_modules
@@ -117,16 +125,20 @@ jobs:
           restore-keys: ${{ runner.os }}-node-
 
       - name: Install frontend dependencies
+        if: hashFiles('package.json') != ''
         run: npm ci
 
       - name: Build frontend
+        if: hashFiles('package.json') != ''
         run: npm run build --if-present
 
       - name: Run Rust tests
+        if: hashFiles('src-tauri/Cargo.toml') != ''
         working-directory: src-tauri
         run: cargo test --all-features
 
       - name: Run frontend tests
+        if: hashFiles('package.json') != ''
         run: npm test --if-present
 
   build:
@@ -161,6 +173,7 @@ jobs:
           node-version: '20'
 
       - name: Cache Rust dependencies
+        if: hashFiles('src-tauri/Cargo.lock') != ''
         uses: actions/cache@v4
         with:
           path: |
@@ -171,6 +184,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Cache Node modules
+        if: hashFiles('package-lock.json') != ''
         uses: actions/cache@v4
         with:
           path: node_modules
@@ -178,9 +192,11 @@ jobs:
           restore-keys: ${{ runner.os }}-node-
 
       - name: Install frontend dependencies
+        if: hashFiles('package.json') != ''
         run: npm ci
 
       - name: Build Tauri app
+        if: hashFiles('src-tauri/Cargo.toml') != ''
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
