@@ -29,6 +29,12 @@ pub enum CoreError {
     #[error("Network timeout after {0} seconds")]
     Timeout(u64),
 
+    #[error("Download failed after {attempts} retry attempts. Last error: {last_error}")]
+    RetriesExhausted { attempts: u32, last_error: String },
+
+    #[error("Checksum mismatch! Expected '{expected}', got '{actual}'")]
+    ChecksumMismatch { expected: String, actual: String },
+
     #[error("Download error: {0}")]
     Download(String),
 }
