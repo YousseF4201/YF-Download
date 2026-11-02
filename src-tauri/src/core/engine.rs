@@ -850,10 +850,8 @@ impl DownloadEngine {
             0
         };
 
-        if let Some(total) = total_size {
-            if existing_bytes >= total {
-                return Ok(existing_bytes);
-            }
+        if total_size.is_some_and(|total| existing_bytes >= total) {
+            return Ok(existing_bytes);
         }
 
         let mut req = self.client.client().get(validated_url);
