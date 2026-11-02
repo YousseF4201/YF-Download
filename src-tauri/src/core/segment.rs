@@ -247,7 +247,7 @@ async fn download_segment_attempt(
         let chunk_len = chunk.len() as u64;
         bytes_downloaded_this_attempt += chunk_len;
 
-        if let Some(ref tx) = progress_tx {
+        if let Some(tx) = progress_tx {
             let _ = tx.send(chunk_len).await;
         }
     }

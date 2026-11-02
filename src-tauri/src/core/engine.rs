@@ -12,9 +12,7 @@ use super::error::CoreError;
 use super::metadata::FileMetadata;
 use super::network::NetworkClient;
 use super::progress::{ProgressTracker, ProgressUpdate};
-use super::segment::{
-    SegmentRange, assemble_segments, download_segment, partition_ranges, segment_temp_path,
-};
+use super::segment::{assemble_segments, download_segment, partition_ranges, segment_temp_path};
 
 /// Minimum file size (64 KB) required to warrant multi-segment partitioning.
 pub const MIN_SEGMENT_THRESHOLD: u64 = 64 * 1024;
