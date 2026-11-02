@@ -84,7 +84,7 @@ impl NetworkClient {
             Ok(response) => {
                 let status = response.status();
                 if status.is_success() {
-                    return Ok(self.build_metadata_from_response(&url, &response, None));
+                    return Ok(self.build_metadata_from_response(&url, &response, None, None));
                 }
 
                 if status == StatusCode::METHOD_NOT_ALLOWED
@@ -128,6 +128,7 @@ impl NetworkClient {
                 url,
                 &response,
                 total_size.or_else(|| extract_content_length(&response)),
+                Some(supports_range),
             ))
         } else {
             self.map_http_error(status)
@@ -152,12 +153,14 @@ impl NetworkClient {
         url: &Url,
         response: &Response,
         override_size: Option<u64>,
+        override_supports_range: Option<bool>,
     ) -> FileMetadata {
         let headers = response.headers();
 
         let total_size = override_size.or_else(|| extract_content_length(response));
-        let supports_range =
-            check_supports_range(headers) || response.status() == StatusCode::PARTIAL_CONTENT;
+        let supports_range = override_supports_range.unwrap_or_else(|| {
+            check_supports_range(headers) || response.status() == StatusCode::PARTIAL_CONTENT
+        });
 
         let file_name = extract_file_name(headers, url);
 
@@ -214,15 +217,14 @@ fn check_supports_range(headers: &reqwest::header::HeaderMap) -> bool {
 /// Extract and sanitize a filename from HTTP headers or URL path.
 pub fn extract_file_name(headers: &reqwest::header::HeaderMap, url: &Url) -> String {
     // 1. Try Content-Disposition header
-    if let Some(cd_val) = headers
+    if let Some(name) = headers
         .get(CONTENT_DISPOSITION)
         .and_then(|v| v.to_str().ok())
+        .and_then(parse_content_disposition_filename)
     {
-        if let Some(name) = parse_content_disposition_filename(cd_val) {
-            let sanitized = sanitize_filename(&name);
-            if !sanitized.is_empty() {
-                return sanitized;
-            }
+        let sanitized = sanitize_filename(&name);
+        if !sanitized.is_empty() {
+            return sanitized;
         }
     }
 
