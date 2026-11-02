@@ -144,6 +144,7 @@ async fn test_download_server_500_retries_and_exhausts() {
         max_retries: 2,
         initial_backoff: Duration::from_millis(50),
         max_backoff: Duration::from_millis(100),
+        segments: 1,
     };
 
     let client = NetworkClient::new(Duration::from_secs(5)).unwrap();
