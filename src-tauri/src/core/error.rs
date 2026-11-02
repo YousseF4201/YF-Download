@@ -35,6 +35,15 @@ pub enum CoreError {
     #[error("Checksum mismatch! Expected '{expected}', got '{actual}'")]
     ChecksumMismatch { expected: String, actual: String },
 
+    #[error("Segment {index} failed: {message}")]
+    SegmentFailed { index: u32, message: String },
+
+    #[error("File assembly failed: {0}")]
+    AssemblyFailed(String),
+
+    #[error("Server does not support partial content (Range)")]
+    RangeNotSupported,
+
     #[error("Download error: {0}")]
     Download(String),
 }
