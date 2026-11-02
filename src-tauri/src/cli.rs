@@ -140,7 +140,7 @@ fn format_duration(secs: u64) -> String {
 }
 
 fn print_progress(p: &ProgressUpdate) {
-    let bar_width = 30;
+    let bar_width: usize = 30;
     let filled = if p.progress_percent > 0.0 {
         ((p.progress_percent / 100.0) * bar_width as f64) as usize
     } else {
