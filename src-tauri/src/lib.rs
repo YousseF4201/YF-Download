@@ -21,11 +21,9 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_greeting() {
-        let result = format_greeting("World");
+        let result = super::format_greeting("World");
         assert_eq!(result, "Hello, World! You've been greeted from Rust!");
     }
 }
