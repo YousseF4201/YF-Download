@@ -20,7 +20,7 @@ use super::segment::{
     SegmentRange, SegmentRetryConfig, assemble_segments, download_segment, partition_ranges,
     segment_temp_path,
 };
-use crate::db::models::{DownloadRecord, DownloadStatus, NewDownload, NewSegment, SegmentStatus};
+use crate::db::models::{DownloadStatus, NewDownload, NewSegment, SegmentStatus};
 use crate::db::repository::Database;
 
 /// Minimum file size (64 KB) required to warrant multi-segment partitioning.
@@ -755,10 +755,11 @@ impl DownloadEngine {
         let mut backoff = self.config.initial_backoff;
 
         loop {
-            if let Some(cancel) = &cancel_flag {
-                if cancel.load(Ordering::Relaxed) {
-                    return Err(CoreError::Paused);
-                }
+            if cancel_flag
+                .as_ref()
+                .is_some_and(|c| c.load(Ordering::Relaxed))
+            {
+                return Err(CoreError::Paused);
             }
 
             match self
@@ -892,11 +893,9 @@ impl DownloadEngine {
         let mut bytes_downloaded_this_attempt: u64 = 0;
 
         while let Some(chunk) = response.chunk().await? {
-            if let Some(cancel) = cancel_flag {
-                if cancel.load(Ordering::Relaxed) {
-                    file.flush().await?;
-                    return Err(CoreError::Paused);
-                }
+            if cancel_flag.is_some_and(|c| c.load(Ordering::Relaxed)) {
+                file.flush().await?;
+                return Err(CoreError::Paused);
             }
 
             file.write_all(&chunk).await?;

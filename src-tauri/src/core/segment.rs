@@ -168,10 +168,11 @@ pub async fn download_segment(
     let mut backoff = retry_config.initial_backoff;
 
     loop {
-        if let Some(cancel) = &cancel_flag {
-            if cancel.load(Ordering::Relaxed) {
-                return Err(CoreError::Paused);
-            }
+        if cancel_flag
+            .as_ref()
+            .is_some_and(|c| c.load(Ordering::Relaxed))
+        {
+            return Err(CoreError::Paused);
         }
 
         match download_segment_attempt(
@@ -227,10 +228,11 @@ async fn download_segment_attempt(
         return Ok(existing_bytes);
     }
 
-    if let Some(cancel) = cancel_flag {
-        if cancel.load(Ordering::Relaxed) {
-            return Err(CoreError::Paused);
-        }
+    if cancel_flag
+        .as_ref()
+        .is_some_and(|c| c.load(Ordering::Relaxed))
+    {
+        return Err(CoreError::Paused);
     }
 
     let range_header_value = range.format_range_header(existing_bytes);
@@ -284,11 +286,12 @@ async fn download_segment_attempt(
     let mut bytes_downloaded_this_attempt: u64 = 0;
 
     while let Some(chunk) = response.chunk().await? {
-        if let Some(cancel) = cancel_flag {
-            if cancel.load(Ordering::Relaxed) {
-                file.flush().await?;
-                return Err(CoreError::Paused);
-            }
+        if cancel_flag
+            .as_ref()
+            .is_some_and(|c| c.load(Ordering::Relaxed))
+        {
+            file.flush().await?;
+            return Err(CoreError::Paused);
         }
 
         file.write_all(&chunk).await?;
