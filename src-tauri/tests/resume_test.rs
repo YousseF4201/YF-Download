@@ -1,5 +1,4 @@
-use std::sync::Arc;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
 use tempfile::tempdir;
 use tokio::fs;
 use wiremock::matchers::{header, method, path};
@@ -91,10 +90,11 @@ async fn test_multi_segment_resume_from_partial_state() {
     let engine = DownloadEngine::with_db(NetworkClient::default(), config, db.clone());
 
     // Resume the download
-    let mut recorded_updates = Vec::new();
+    let recorded_updates = Arc::new(Mutex::new(Vec::new()));
+    let rec_clone = recorded_updates.clone();
     let result = engine
-        .resume_download(download_id, None, |p| {
-            recorded_updates.push(p);
+        .resume_download(download_id, None, move |p| {
+            rec_clone.lock().unwrap().push(p);
         })
         .await
         .expect("resumed download should succeed");
@@ -117,8 +117,9 @@ async fn test_multi_segment_resume_from_partial_state() {
     assert_eq!(seg_records[1].status, SegmentStatus::Completed);
 
     // Initial progress update should reflect resumed 32 KB starting point
-    assert!(!recorded_updates.is_empty());
-    assert!(recorded_updates[0].downloaded_bytes >= 32 * 1024);
+    let updates = recorded_updates.lock().unwrap();
+    assert!(!updates.is_empty());
+    assert!(updates[0].downloaded_bytes >= 32 * 1024);
 }
 
 #[tokio::test]
