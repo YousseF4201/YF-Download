@@ -324,12 +324,10 @@ pub async fn delete_download(
     let _ = state.engine.cancel_download(download_id).await;
 
     if delete_file.unwrap_or(false) {
-        match state.db.get_download(download_id) {
-            Ok(Some(record)) => {
-                let path = PathBuf::from(&record.save_path);
-                let _ = tokio::fs::remove_file(path).await;
-            }
-            _ => {}
+        #[allow(clippy::collapsible_if)]
+        if let Ok(Some(record)) = state.db.get_download(download_id) {
+            let path = PathBuf::from(&record.save_path);
+            let _ = tokio::fs::remove_file(path).await;
         }
     }
 
