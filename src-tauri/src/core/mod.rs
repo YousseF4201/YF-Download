@@ -12,4 +12,7 @@ pub use error::CoreError;
 pub use metadata::FileMetadata;
 pub use network::NetworkClient;
 pub use progress::{ProgressTracker, ProgressUpdate};
-pub use segment::{SegmentRange, assemble_segments, partition_ranges, segment_temp_path};
+pub use segment::{
+    SegmentRange, SegmentRetryConfig, assemble_segments, download_segment, partition_ranges,
+    segment_temp_path,
+};

@@ -12,7 +12,9 @@ use super::error::CoreError;
 use super::metadata::FileMetadata;
 use super::network::NetworkClient;
 use super::progress::{ProgressTracker, ProgressUpdate};
-use super::segment::{assemble_segments, download_segment, partition_ranges, segment_temp_path};
+use super::segment::{
+    SegmentRetryConfig, assemble_segments, download_segment, partition_ranges, segment_temp_path,
+};
 
 /// Minimum file size (64 KB) required to warrant multi-segment partitioning.
 pub const MIN_SEGMENT_THRESHOLD: u64 = 64 * 1024;
@@ -167,9 +169,11 @@ impl DownloadEngine {
             let url_str = url.to_string();
             let part_path = part_path.clone();
             let tx = progress_tx.clone();
-            let max_retries = self.config.max_retries;
-            let initial_backoff = self.config.initial_backoff;
-            let max_backoff = self.config.max_backoff;
+            let retry_config = SegmentRetryConfig {
+                max_retries: self.config.max_retries,
+                initial_backoff: self.config.initial_backoff,
+                max_backoff: self.config.max_backoff,
+            };
 
             tasks.spawn(async move {
                 download_segment(
@@ -178,9 +182,7 @@ impl DownloadEngine {
                     &range,
                     &part_path,
                     Some(tx),
-                    max_retries,
-                    initial_backoff,
-                    max_backoff,
+                    retry_config,
                 )
                 .await
             });

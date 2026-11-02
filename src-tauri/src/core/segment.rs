@@ -133,6 +133,24 @@ pub async fn assemble_segments(
     Ok(total_bytes_written)
 }
 
+/// Retry configuration for downloading individual segments.
+#[derive(Debug, Clone, Copy)]
+pub struct SegmentRetryConfig {
+    pub max_retries: u32,
+    pub initial_backoff: Duration,
+    pub max_backoff: Duration,
+}
+
+impl Default for SegmentRetryConfig {
+    fn default() -> Self {
+        Self {
+            max_retries: 3,
+            initial_backoff: Duration::from_millis(500),
+            max_backoff: Duration::from_secs(5),
+        }
+    }
+}
+
 /// Downloads a single segment range to its temporary file, emitting progress deltas
 /// over the provided sender channel.
 pub async fn download_segment(
@@ -141,12 +159,10 @@ pub async fn download_segment(
     range: &SegmentRange,
     part_path: &Path,
     progress_tx: Option<Sender<u64>>,
-    max_retries: u32,
-    initial_backoff: Duration,
-    max_backoff: Duration,
+    retry_config: SegmentRetryConfig,
 ) -> Result<u64, CoreError> {
     let mut attempts = 0;
-    let mut backoff = initial_backoff;
+    let mut backoff = retry_config.initial_backoff;
 
     loop {
         match download_segment_attempt(network_client, url, range, part_path, &progress_tx).await {
@@ -157,7 +173,7 @@ pub async fn download_segment(
                 }
 
                 attempts += 1;
-                if attempts > max_retries {
+                if attempts > retry_config.max_retries {
                     return Err(CoreError::SegmentFailed {
                         index: range.index,
                         message: format!("Failed after {attempts} retries: {err}"),
@@ -165,7 +181,7 @@ pub async fn download_segment(
                 }
 
                 sleep(backoff).await;
-                backoff = (backoff * 2).min(max_backoff);
+                backoff = (backoff * 2).min(retry_config.max_backoff);
             }
         }
     }
