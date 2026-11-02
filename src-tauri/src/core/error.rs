@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::db::DbError;
+
 #[derive(Error, Debug)]
 pub enum CoreError {
     #[error("Invalid URL: {0}")]
@@ -26,6 +28,9 @@ pub enum CoreError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("Database error: {0}")]
+    Db(#[from] DbError),
+
     #[error("Network timeout after {0} seconds")]
     Timeout(u64),
 
@@ -43,6 +48,15 @@ pub enum CoreError {
 
     #[error("Server does not support partial content (Range)")]
     RangeNotSupported,
+
+    #[error("Download task with ID {0} not found")]
+    TaskNotFound(i64),
+
+    #[error("Download was paused")]
+    Paused,
+
+    #[error("Download was cancelled")]
+    Cancelled,
 
     #[error("Download error: {0}")]
     Download(String),

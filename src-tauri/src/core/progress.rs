@@ -23,6 +23,7 @@ pub struct ProgressUpdate {
 pub struct ProgressTracker {
     total_bytes: Option<u64>,
     downloaded_bytes: u64,
+    bytes_transferred_this_session: u64,
     start_time: Instant,
     samples: VecDeque<(Instant, u64)>,
 }
@@ -33,6 +34,18 @@ impl ProgressTracker {
         Self {
             total_bytes,
             downloaded_bytes: 0,
+            bytes_transferred_this_session: 0,
+            start_time: Instant::now(),
+            samples: VecDeque::new(),
+        }
+    }
+
+    /// Create a progress tracker starting from a non-zero byte offset (e.g. for resumed downloads).
+    pub fn with_initial_bytes(total_bytes: Option<u64>, initial_bytes: u64) -> Self {
+        Self {
+            total_bytes,
+            downloaded_bytes: initial_bytes,
+            bytes_transferred_this_session: 0,
             start_time: Instant::now(),
             samples: VecDeque::new(),
         }
@@ -42,7 +55,13 @@ impl ProgressTracker {
     pub fn record_progress(&mut self, chunk_len: u64) -> ProgressUpdate {
         let now = Instant::now();
         self.downloaded_bytes = self.downloaded_bytes.saturating_add(chunk_len);
-        self.samples.push_back((now, chunk_len));
+        self.bytes_transferred_this_session = self
+            .bytes_transferred_this_session
+            .saturating_add(chunk_len);
+
+        if chunk_len > 0 {
+            self.samples.push_back((now, chunk_len));
+        }
 
         // Purge samples older than SPEED_WINDOW_SECS
         let cutoff = now
@@ -85,10 +104,10 @@ impl ProgressTracker {
             }
         }
 
-        // Fallback to overall speed if sample window is too short
+        // Fallback to session speed if sample window is too short
         let overall_duration = now.duration_since(self.start_time).as_secs_f64();
         if overall_duration > 0.0 {
-            (self.downloaded_bytes as f64 / overall_duration) as u64
+            (self.bytes_transferred_this_session as f64 / overall_duration) as u64
         } else {
             0
         }
