@@ -78,45 +78,14 @@ export async function onDownloadStatus(
   });
 }
 
-/**
- * Format raw byte count into human-readable string (KB, MB, GB)
- */
-export function formatBytes(bytes: number | null | undefined): string {
-  if (bytes === null || bytes === undefined || isNaN(bytes)) return '0 B';
-  if (bytes === 0) return '0 B';
-
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const k = 1024;
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const unitIndex = Math.min(i, units.length - 1);
-  const formatted = (bytes / Math.pow(k, unitIndex)).toFixed(unitIndex === 0 ? 0 : 2);
-
-  return `${formatted} ${units[unitIndex]}`;
-}
-
-/**
- * Format bytes per second into readable network speed string
- */
-export function formatSpeed(bytesPerSec: number): string {
-  if (!bytesPerSec || bytesPerSec <= 0) return '0 B/s';
-  return `${formatBytes(bytesPerSec)}/s`;
-}
-
-/**
- * Format seconds into human readable ETA (HH:MM:SS)
- */
-export function formatEta(seconds: number | null | undefined): string {
-  if (seconds === null || seconds === undefined || !isFinite(seconds) || seconds < 0) {
-    return '--:--';
-  }
-
-  const sec = Math.floor(seconds);
-  const hrs = Math.floor(sec / 3600);
-  const mins = Math.floor((sec % 3600) / 60);
-  const remainingSecs = sec % 60;
-
-  if (hrs > 0) {
-    return `${hrs}h ${mins}m ${remainingSecs}s`;
-  }
-  return `${mins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
-}
+// Re-export utility formatters & calculations
+export {
+  calculateEta,
+  calculateProgress,
+  calculateSpeed,
+  formatBytes,
+  formatEta,
+  formatSpeed,
+  getFileCategory,
+  type FileCategoryInfo,
+} from './utils/formatters';

@@ -4,8 +4,6 @@
     addDownload,
     cancelDownload,
     deleteDownload,
-    formatBytes,
-    formatEta,
     formatSpeed,
     getDefaultDownloadDir,
     listDownloads,
@@ -14,7 +12,8 @@
     pauseDownload,
     resumeDownload,
   } from '$lib/api';
-  import type { DownloadRecord, DownloadStatus, ProgressPayload } from '$lib/types';
+  import type { DownloadRecord, ProgressPayload } from '$lib/types';
+  import DownloadItem from '$lib/components/DownloadItem.svelte';
 
   // Svelte 5 runes for reactive state
   let downloads = $state<DownloadRecord[]>([]);
@@ -184,33 +183,6 @@
       errorMessage = `تعذر حذف السجل: ${String(err)}`;
     }
   }
-
-  function getStatusBadge(status: DownloadStatus): { label: string; class: string } {
-    switch (status) {
-      case 'active':
-        return { label: 'جاري التحميل', class: 'badge-active' };
-      case 'completed':
-        return { label: 'مكتمل', class: 'badge-completed' };
-      case 'paused':
-        return { label: 'متوقف مؤقتاً', class: 'badge-paused' };
-      case 'pending':
-        return { label: 'قيد الانتظار', class: 'badge-pending' };
-      case 'failed':
-        return { label: 'فشل', class: 'badge-failed' };
-      case 'cancelled':
-        return { label: 'ملغي', class: 'badge-cancelled' };
-    }
-  }
-
-  function getProgressPercent(item: DownloadRecord): number {
-    if (liveProgress[item.id]) {
-      return Math.min(100, Math.max(0, liveProgress[item.id].progress_percent));
-    }
-    if (item.total_size && item.total_size > 0) {
-      return Math.min(100, Math.max(0, (item.downloaded_bytes / item.total_size) * 100));
-    }
-    return item.status === 'completed' ? 100 : 0;
-  }
 </script>
 
 <div class="app-shell" dir="rtl">
@@ -322,112 +294,14 @@
     {:else}
       <div class="downloads-list">
         {#each filteredDownloads as item (item.id)}
-          {@const percent = getProgressPercent(item)}
-          {@const badge = getStatusBadge(item.status)}
-          {@const live = liveProgress[item.id]}
-
-          <article class="download-card" class:active-card={item.status === 'active'}>
-            <div class="card-header">
-              <div class="file-info">
-                <span class="file-icon">📦</span>
-                <div>
-                  <h3 class="file-name" title={item.file_name}>{item.file_name}</h3>
-                  <p class="file-url" title={item.url}>{item.url}</p>
-                </div>
-              </div>
-
-              <div class="badge-and-actions">
-                <span class={`badge ${badge.class}`}>{badge.label}</span>
-              </div>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="progress-bar-wrapper">
-              <div
-                class="progress-bar"
-                class:animated={item.status === 'active'}
-                class:completed={item.status === 'completed'}
-                class:paused={item.status === 'paused'}
-                style="width: {percent}%"
-              ></div>
-            </div>
-
-            <!-- Metrics details row -->
-            <div class="metrics-row">
-              <div class="metric">
-                <span class="metric-label">الحجم المحمّل:</span>
-                <span class="metric-val">
-                  {formatBytes(item.downloaded_bytes)}
-                  {#if item.total_size}
-                    / {formatBytes(item.total_size)}
-                  {:else}
-                    (حجم غير محدد)
-                  {/if}
-                </span>
-              </div>
-
-              <div class="metric">
-                <span class="metric-label">النسبة:</span>
-                <span class="metric-val percent">{percent.toFixed(1)}%</span>
-              </div>
-
-              {#if item.status === 'active'}
-                <div class="metric">
-                  <span class="metric-label">السرعة:</span>
-                  <span class="metric-val speed-val">
-                    {formatSpeed(live?.speed_bytes_per_sec ?? 0)}
-                  </span>
-                </div>
-
-                <div class="metric">
-                  <span class="metric-label">الوقت المتبقي:</span>
-                  <span class="metric-val">{formatEta(live?.eta_seconds)}</span>
-                </div>
-              {/if}
-
-              {#if item.error_msg}
-                <div class="metric error-metric">
-                  <span>الخطأ: {item.error_msg}</span>
-                </div>
-              {/if}
-            </div>
-
-            <!-- Task Action Controls -->
-            <div class="card-footer">
-              <span class="save-path" title={item.save_path}>
-                📂 {item.save_path}
-              </span>
-
-              <div class="action-buttons">
-                {#if item.status === 'active'}
-                  <button class="btn btn-action" onclick={() => handlePause(item.id)}>
-                    ⏸️ إيقاف مؤقت
-                  </button>
-                  <button class="btn btn-action btn-danger" onclick={() => handleCancel(item.id)}>
-                    ⏹️ إلغاء
-                  </button>
-                {:else if item.status === 'paused' || item.status === 'failed' || item.status === 'pending'}
-                  <button class="btn btn-action btn-success" onclick={() => handleResume(item.id)}>
-                    ▶️ استئناف
-                  </button>
-                  <button class="btn btn-action btn-danger" onclick={() => handleDelete(item.id)}>
-                    🗑️ حذف
-                  </button>
-                {:else if item.status === 'completed'}
-                  <button class="btn btn-action" onclick={() => handleDelete(item.id)}>
-                    🗑️ إزالة من القائمة
-                  </button>
-                {:else if item.status === 'cancelled'}
-                  <button class="btn btn-action btn-success" onclick={() => handleResume(item.id)}>
-                    🔄 إعادة التحميل
-                  </button>
-                  <button class="btn btn-action btn-danger" onclick={() => handleDelete(item.id)}>
-                    🗑️ حذف
-                  </button>
-                {/if}
-              </div>
-            </div>
-          </article>
+          <DownloadItem
+            {item}
+            live={liveProgress[item.id]}
+            onpause={handlePause}
+            onresume={handleResume}
+            oncancel={handleCancel}
+            ondelete={handleDelete}
+          />
         {/each}
       </div>
     {/if}
@@ -963,47 +837,6 @@
     font-size: 0.78rem;
   }
 
-  .btn-action {
-    background: #1e293b;
-    color: #cbd5e1;
-    border: 1px solid #334155;
-    padding: 0.35rem 0.7rem;
-    font-size: 0.78rem;
-    border-radius: 0.45rem;
-  }
-  .btn-action::after {
-    display: none;
-  }
-  .btn-action:hover {
-    background: #334155;
-    border-color: #475569;
-    color: #f8fafc;
-    transform: translateY(-1px);
-    box-shadow: 0 3px 8px #00000030;
-  }
-
-  .btn-success {
-    background: linear-gradient(135deg, #15803d, #166534);
-    border-color: #22c55e40;
-    color: #dcfce7;
-  }
-  .btn-success:hover {
-    background: linear-gradient(135deg, #16a34a, #15803d);
-    box-shadow: 0 3px 12px #22c55e30;
-    border-color: #22c55e60;
-  }
-
-  .btn-danger {
-    background: linear-gradient(135deg, #b91c1c, #991b1b);
-    border-color: #ef444440;
-    color: #fecaca;
-  }
-  .btn-danger:hover {
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    box-shadow: 0 3px 12px #ef444430;
-    border-color: #ef444460;
-  }
-
   /* ── Empty State ─────────────────────────────────── */
   .empty-state {
     text-align: center;
@@ -1065,270 +898,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.85rem;
-  }
-
-  .download-card {
-    background: linear-gradient(160deg, #111827, #0f1520);
-    border: 1px solid #1e293b;
-    border-radius: 0.9rem;
-    padding: 1.15rem 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-    transition:
-      border-color 0.3s ease,
-      box-shadow 0.3s ease,
-      transform 0.2s ease;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .download-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #ffffff08, transparent);
-  }
-
-  .download-card:hover {
-    border-color: #334155;
-    transform: translateY(-1px);
-    box-shadow: 0 8px 30px -12px #00000060;
-  }
-
-  .download-card.active-card {
-    border-color: #1e40af;
-    box-shadow:
-      0 0 20px #3b82f610,
-      0 8px 30px -12px #00000060;
-  }
-
-  .download-card.active-card::before {
-    background: linear-gradient(90deg, transparent, #3b82f640, transparent);
-  }
-
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .file-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    overflow: hidden;
-    min-width: 0;
-  }
-
-  .file-icon {
-    font-size: 1.35rem;
-    background: #0a0f1a;
-    border: 1px solid #1e293b;
-    padding: 0.5rem;
-    border-radius: 0.6rem;
-    flex-shrink: 0;
-  }
-
-  .file-name {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #f1f5f9;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 550px;
-    letter-spacing: -0.005em;
-  }
-
-  .file-url {
-    font-size: 0.72rem;
-    color: #475569;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 500px;
-    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    direction: ltr;
-    text-align: left;
-  }
-
-  /* ── Badges ──────────────────────────────────────── */
-  .badge {
-    font-size: 0.7rem;
-    padding: 0.22rem 0.65rem;
-    border-radius: 9999px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .badge-active {
-    background: linear-gradient(135deg, #1e3a5f55, #2563eb20);
-    color: #60a5fa;
-    border: 1px solid #3b82f680;
-    box-shadow: 0 0 10px #3b82f615;
-    animation: badge-pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes badge-pulse {
-    0%,
-    100% {
-      box-shadow: 0 0 8px #3b82f615;
-    }
-    50% {
-      box-shadow: 0 0 16px #3b82f630;
-    }
-  }
-
-  .badge-completed {
-    background: linear-gradient(135deg, #052e1655, #16a34a20);
-    color: #4ade80;
-    border: 1px solid #22c55e70;
-  }
-  .badge-paused {
-    background: linear-gradient(135deg, #451a0355, #d9770620);
-    color: #fbbf24;
-    border: 1px solid #f59e0b60;
-  }
-  .badge-pending {
-    background: #1e293b;
-    color: #64748b;
-    border: 1px solid #33415580;
-  }
-  .badge-failed {
-    background: linear-gradient(135deg, #450a0a55, #dc262620);
-    color: #f87171;
-    border: 1px solid #ef444470;
-  }
-  .badge-cancelled {
-    background: #1e293b;
-    color: #64748b;
-    border: 1px solid #33415560;
-  }
-
-  /* ── Progress Bar ────────────────────────────────── */
-  .progress-bar-wrapper {
-    width: 100%;
-    height: 6px;
-    background: #0a0f1a;
-    border-radius: 9999px;
-    overflow: hidden;
-    border: 1px solid #1e293b;
-  }
-
-  .progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #1d4ed8, #3b82f6);
-    border-radius: 9999px;
-    transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-    position: relative;
-  }
-
-  .progress-bar.animated {
-    background: linear-gradient(90deg, #1d4ed8 0%, #60a5fa 40%, #38bdf8 60%, #1d4ed8 100%);
-    background-size: 300% 100%;
-    animation: shimmer 2.5s ease-in-out infinite;
-  }
-
-  .progress-bar.animated::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 60px;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, #ffffff30);
-    border-radius: 9999px;
-  }
-
-  .progress-bar.completed {
-    background: linear-gradient(90deg, #15803d, #22c55e, #4ade80);
-  }
-  .progress-bar.paused {
-    background: linear-gradient(90deg, #b45309, #f59e0b);
-    opacity: 0.8;
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: 100% 0;
-    }
-    100% {
-      background-position: -200% 0;
-    }
-  }
-
-  /* ── Metrics Row ─────────────────────────────────── */
-  .metrics-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 1.25rem;
-    font-size: 0.78rem;
-    color: #64748b;
-  }
-
-  .metric {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .metric-val {
-    color: #cbd5e1;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .metric-val.percent {
-    color: #38bdf8;
-    font-weight: 700;
-    font-size: 0.85rem;
-  }
-  .metric-val.speed-val {
-    color: #4ade80;
-    font-weight: 700;
-    font-size: 0.85rem;
-    text-shadow: 0 0 12px #4ade8020;
-  }
-
-  .error-metric {
-    color: #f87171;
-    font-style: italic;
-  }
-
-  /* ── Card Footer ─────────────────────────────────── */
-  .card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.65rem;
-    padding-top: 0.65rem;
-    border-top: 1px solid #1e293b;
-  }
-
-  .save-path {
-    font-size: 0.7rem;
-    color: #475569;
-    max-width: 420px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    direction: ltr;
-    text-align: left;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 0.4rem;
   }
 
   /* ── Modal ───────────────────────────────────────── */
