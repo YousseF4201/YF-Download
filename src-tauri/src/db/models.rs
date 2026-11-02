@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 /// Represents the status of a download task.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,17 +25,20 @@ impl DownloadStatus {
             Self::Cancelled => "cancelled",
         }
     }
+}
 
-    /// Parses a database status string into `DownloadStatus`.
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for DownloadStatus {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "pending" => Some(Self::Pending),
-            "active" => Some(Self::Active),
-            "paused" => Some(Self::Paused),
-            "completed" => Some(Self::Completed),
-            "failed" => Some(Self::Failed),
-            "cancelled" => Some(Self::Cancelled),
-            _ => None,
+            "pending" => Ok(Self::Pending),
+            "active" => Ok(Self::Active),
+            "paused" => Ok(Self::Paused),
+            "completed" => Ok(Self::Completed),
+            "failed" => Ok(Self::Failed),
+            "cancelled" => Ok(Self::Cancelled),
+            _ => Err(()),
         }
     }
 }
@@ -59,15 +63,18 @@ impl SegmentStatus {
             Self::Failed => "failed",
         }
     }
+}
 
-    /// Parses a database status string into `SegmentStatus`.
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for SegmentStatus {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "pending" => Some(Self::Pending),
-            "active" => Some(Self::Active),
-            "completed" => Some(Self::Completed),
-            "failed" => Some(Self::Failed),
-            _ => None,
+            "pending" => Ok(Self::Pending),
+            "active" => Ok(Self::Active),
+            "completed" => Ok(Self::Completed),
+            "failed" => Ok(Self::Failed),
+            _ => Err(()),
         }
     }
 }

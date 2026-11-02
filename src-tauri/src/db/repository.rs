@@ -79,8 +79,9 @@ impl Database {
         let record = stmt
             .query_row(params![id], |row| {
                 let status_str: String = row.get(6)?;
-                let status =
-                    DownloadStatus::from_str(&status_str).unwrap_or(DownloadStatus::Failed);
+                let status = status_str
+                    .parse::<DownloadStatus>()
+                    .unwrap_or(DownloadStatus::Failed);
                 let total_size_raw: Option<i64> = row.get(4)?;
                 let downloaded_raw: i64 = row.get(5)?;
 
@@ -115,7 +116,9 @@ impl Database {
 
         let rows = stmt.query_map([], |row| {
             let status_str: String = row.get(6)?;
-            let status = DownloadStatus::from_str(&status_str).unwrap_or(DownloadStatus::Failed);
+            let status = status_str
+                .parse::<DownloadStatus>()
+                .unwrap_or(DownloadStatus::Failed);
             let total_size_raw: Option<i64> = row.get(4)?;
             let downloaded_raw: i64 = row.get(5)?;
 
@@ -154,7 +157,9 @@ impl Database {
 
         let rows = stmt.query_map([], |row| {
             let status_str: String = row.get(6)?;
-            let status = DownloadStatus::from_str(&status_str).unwrap_or(DownloadStatus::Failed);
+            let status = status_str
+                .parse::<DownloadStatus>()
+                .unwrap_or(DownloadStatus::Failed);
             let total_size_raw: Option<i64> = row.get(4)?;
             let downloaded_raw: i64 = row.get(5)?;
 
@@ -283,7 +288,9 @@ impl Database {
 
         let rows = stmt.query_map(params![download_id], |row| {
             let status_str: String = row.get(6)?;
-            let status = SegmentStatus::from_str(&status_str).unwrap_or(SegmentStatus::Failed);
+            let status = status_str
+                .parse::<SegmentStatus>()
+                .unwrap_or(SegmentStatus::Failed);
             let start_raw: i64 = row.get(3)?;
             let end_raw: i64 = row.get(4)?;
             let downloaded_raw: i64 = row.get(5)?;
