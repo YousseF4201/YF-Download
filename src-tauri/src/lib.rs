@@ -1,7 +1,13 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+
+/// Returns a greeting message for the specified name.
+pub fn format_greeting(name: &str) -> String {
+    format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
 #[tauri::command]
 pub fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+    format_greeting(name)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -15,11 +21,11 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::greet;
+    use super::*;
 
     #[test]
-    fn test_greet() {
-        let result = greet("World");
+    fn test_greeting() {
+        let result = format_greeting("World");
         assert_eq!(result, "Hello, World! You've been greeted from Rust!");
     }
 }
