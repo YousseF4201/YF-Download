@@ -150,10 +150,8 @@ pub async fn add_download(
     };
 
     // If segments is specified, configure engine
-    if let Some(seg) = segments {
-        if seg > 0 && seg <= 64 {
-            // Config segment count is supported
-        }
+    if let Some(_seg) = segments.filter(|&s| s > 0 && s <= 64) {
+        // Config segment count is supported
     }
 
     let download_id = state
@@ -326,9 +324,12 @@ pub async fn delete_download(
     let _ = state.engine.cancel_download(download_id).await;
 
     if delete_file.unwrap_or(false) {
-        if let Ok(Some(record)) = state.db.get_download(download_id) {
-            let path = PathBuf::from(&record.save_path);
-            let _ = tokio::fs::remove_file(path).await;
+        match state.db.get_download(download_id) {
+            Ok(Some(record)) => {
+                let path = PathBuf::from(&record.save_path);
+                let _ = tokio::fs::remove_file(path).await;
+            }
+            _ => {}
         }
     }
 
