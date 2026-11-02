@@ -99,7 +99,6 @@ impl DownloadEngine {
         let start_time = Instant::now();
         let mut attempts: u32 = 0;
         let mut backoff = self.config.initial_backoff;
-        let mut last_error_msg = String::new();
 
         loop {
             match self
@@ -108,8 +107,8 @@ impl DownloadEngine {
             {
                 Ok(bytes_written) => {
                     // Move temp file to final destination
-                    if let Err(e) = fs::rename(&temp_path, &target_path).await {
-                        // On some Windows configurations, rename fails if file exists
+                    if fs::rename(&temp_path, &target_path).await.is_err() {
+                        // On some Windows configurations, rename fails if destination file exists
                         let _ = fs::remove_file(&target_path).await;
                         fs::rename(&temp_path, &target_path)
                             .await
@@ -120,13 +119,13 @@ impl DownloadEngine {
                     let sha256_hash = compute_sha256(&target_path).await?;
 
                     // Verify against expected hash if requested
-                    if let Some(expected) = expected_sha256 {
-                        if !verify_sha256(&target_path, expected).await? {
-                            return Err(CoreError::ChecksumMismatch {
-                                expected: expected.to_string(),
-                                actual: sha256_hash,
-                            });
-                        }
+                    if let Some(expected) = expected_sha256
+                        && !verify_sha256(&target_path, expected).await?
+                    {
+                        return Err(CoreError::ChecksumMismatch {
+                            expected: expected.to_string(),
+                            actual: sha256_hash,
+                        });
                     }
 
                     return Ok(DownloadResult {
@@ -144,14 +143,14 @@ impl DownloadEngine {
                         return Err(err);
                     }
 
-                    last_error_msg = err.to_string();
+                    let err_msg = err.to_string();
                     attempts += 1;
 
                     if attempts > self.config.max_retries {
                         let _ = fs::remove_file(&temp_path).await;
                         return Err(CoreError::RetriesExhausted {
                             attempts,
-                            last_error: last_error_msg,
+                            last_error: err_msg,
                         });
                     }
 
