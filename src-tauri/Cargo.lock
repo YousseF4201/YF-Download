@@ -5114,9 +5114,12 @@ dependencies = [
 name = "yf-download"
 version = "0.1.0"
 dependencies = [
+ "hex",
+ "percent-encoding",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",

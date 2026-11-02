@@ -1,6 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
 pub mod core;
+pub mod db;
 
 /// Returns a greeting message for the specified name.
 pub fn format_greeting(name: &str) -> String {
