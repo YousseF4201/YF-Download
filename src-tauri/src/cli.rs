@@ -67,11 +67,12 @@ pub fn parse_cli_args(args: &[String]) -> Result<CliOptions, String> {
             "-r" | "--resume" => {
                 opts.resume_flag = true;
                 i += 1;
-                if i < args.len() && !args[i].starts_with('-') {
-                    if let Ok(id) = args[i].parse::<i64>() {
-                        opts.resume_id = Some(id);
-                        i += 1;
-                    }
+                if i < args.len()
+                    && !args[i].starts_with('-')
+                    && let Ok(id) = args[i].parse::<i64>()
+                {
+                    opts.resume_id = Some(id);
+                    i += 1;
                 }
             }
             "--db" => {
@@ -253,8 +254,8 @@ async fn main() {
             Ok(downloads) => {
                 println!("Downloads in {}:", db_file.display());
                 println!(
-                    "{:<5} | {:<24} | {:<10} | {:<18} | {}",
-                    "ID", "File", "Status", "Progress", "URL"
+                    "{:<5} | {:<24} | {:<10} | {:<18} | URL",
+                    "ID", "File", "Status", "Progress"
                 );
                 println!("{}", "─".repeat(80));
                 for dl in downloads {
