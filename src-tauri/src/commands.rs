@@ -52,7 +52,8 @@ pub struct DownloadStatusPayload {
 
 /// Sanitizes a file name to prevent path traversal and invalid characters.
 pub fn sanitize_filename(filename: &str) -> String {
-    let name = Path::new(filename)
+    let normalized = filename.replace('\\', "/");
+    let name = Path::new(&normalized)
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("download.bin");
