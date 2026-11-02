@@ -359,7 +359,7 @@ mod tests {
         let part_paths = vec![part0.clone(), part1.clone(), part2.clone()];
         let written = assemble_segments(&target, &part_paths).await.unwrap();
 
-        assert_eq!(written, 25);
+        assert_eq!(written, 26);
         let content = fs::read(&target).await.unwrap();
         assert_eq!(content, b"Hello, Rust Multi-Segment!");
 
